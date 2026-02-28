@@ -14,10 +14,12 @@ This project turns common iOS fastlane workflows into a GUI:
 ## Current prototype scope
 
 - Project scanner command (`scan_project`) with `xcodebuild -list` scheme parsing
+- Auto-detect build identity (`PRODUCT_BUNDLE_IDENTIFIER`, `DEVELOPMENT_TEAM`) from build settings
 - Config form and preview panel
 - Fastlane env generator (`generate_fastlane_files`)
 - Lane runner (`run_lane`) for `bundle exec fastlane ios <lane>`
 - Profile persistence (`save_profile` / `load_profile`) at `.fastlane-desktop/profile.json`
+- Project path picker via native dialog (`Browse`)
 
 ## Tech stack
 
@@ -46,6 +48,14 @@ npm run tauri dev
 ```bash
 npm run tauri build
 ```
+
+4. Stable desktop build with logs and one retry for DMG bundling
+
+```bash
+npm run build:desktop
+```
+
+Logs are written to `build-logs/tauri-build-*.log`.
 
 ## Directory
 

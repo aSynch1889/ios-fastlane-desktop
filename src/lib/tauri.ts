@@ -1,8 +1,14 @@
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import type { LaneRunResult, ProjectConfig, ScanResult } from "../types";
 
 export async function selectProjectPath(): Promise<string | null> {
-  return invoke("select_project_path");
+  const selected = await open({
+    directory: true,
+    multiple: false,
+    title: "Select iOS Project Folder"
+  });
+  return typeof selected === "string" ? selected : null;
 }
 
 export async function scanProject(projectPath: string): Promise<ScanResult> {

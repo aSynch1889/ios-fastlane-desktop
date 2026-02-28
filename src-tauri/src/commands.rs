@@ -50,28 +50,6 @@ pub struct LaneRunResult {
 }
 
 #[tauri::command]
-pub fn select_project_path() -> Result<Option<String>, String> {
-    let script = "try\nPOSIX path of (choose folder with prompt \"Select iOS project folder\")\non error number -128\nreturn \"\"\nend try";
-    let output = Command::new("/usr/bin/osascript")
-        .arg("-e")
-        .arg(script)
-        .output()
-        .map_err(|e| format!("Failed to open folder picker: {}", e))?;
-
-    if !output.status.success() {
-        let err = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Folder picker failed: {}", err.trim()));
-    }
-
-    let selected = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if selected.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(selected))
-    }
-}
-
-#[tauri::command]
 pub fn scan_project(project_path: String) -> Result<ScanResult, String> {
     let root = PathBuf::from(project_path.clone());
     if !root.exists() {
@@ -85,6 +63,19 @@ pub fn scan_project(project_path: String) -> Result<ScanResult, String> {
         Ok(list) if !list.is_empty() => list,
         _ => vec![],
     };
+    let (scheme_dev, scheme_dis) = pick_dev_dis_schemes(&schemes);
+    let bundle_id_dev = scheme_dev
+        .as_deref()
+        .and_then(|scheme| resolve_build_setting(&root, workspace.as_deref(), xcodeproj.as_deref(), scheme, "PRODUCT_BUNDLE_IDENTIFIER"));
+    let bundle_id_dis = scheme_dis
+        .as_deref()
+        .and_then(|scheme| resolve_build_setting(&root, workspace.as_deref(), xcodeproj.as_deref(), scheme, "PRODUCT_BUNDLE_IDENTIFIER"));
+    let team_id_dev = scheme_dev
+        .as_deref()
+        .and_then(|scheme| resolve_build_setting(&root, workspace.as_deref(), xcodeproj.as_deref(), scheme, "DEVELOPMENT_TEAM"));
+    let team_id_dis = scheme_dis
+        .as_deref()
+        .and_then(|scheme| resolve_build_setting(&root, workspace.as_deref(), xcodeproj.as_deref(), scheme, "DEVELOPMENT_TEAM"));
     let project_name = root
         .file_name()
         .and_then(OsStr::to_str)
@@ -96,9 +87,9 @@ pub fn scan_project(project_path: String) -> Result<ScanResult, String> {
         workspace,
         xcodeproj,
         schemes,
-        bundle_id_dev: None,
-        bundle_id_dis: None,
-        team_id: None,
+        bundle_id_dev,
+        bundle_id_dis,
+        team_id: team_id_dis.or(team_id_dev),
     })
 }
 
@@ -301,4 +292,75 @@ fn extract_schemes(xcodebuild_output: &str) -> Vec<String> {
     }
 
     schemes
+}
+
+fn pick_dev_dis_schemes(schemes: &[String]) -> (Option<String>, Option<String>) {
+    if schemes.is_empty() {
+        return (None, None);
+    }
+
+    let dev = schemes
+        .iter()
+        .find(|s| {
+            let lower = s.to_lowercase();
+            lower.contains("dev") || lower.contains("debug") || lower.contains("staging")
+        })
+        .cloned()
+        .or_else(|| schemes.first().cloned());
+
+    let dis = schemes
+        .iter()
+        .find(|s| {
+            let lower = s.to_lowercase();
+            lower.contains("prod") || lower.contains("release") || lower.contains("appstore")
+        })
+        .cloned()
+        .or_else(|| schemes.iter().find(|s| Some((*s).clone()) != dev).cloned())
+        .or_else(|| schemes.first().cloned());
+
+    (dev, dis)
+}
+
+fn resolve_build_setting(
+    root: &Path,
+    workspace: Option<&str>,
+    xcodeproj: Option<&str>,
+    scheme: &str,
+    key: &str,
+) -> Option<String> {
+    let target_arg = if let Some(ws) = workspace {
+        format!("-workspace '{}'", escape_single_quote(ws))
+    } else if let Some(proj) = xcodeproj {
+        format!("-project '{}'", escape_single_quote(proj))
+    } else {
+        return None;
+    };
+
+    let cmd = format!(
+        "cd '{}' && xcodebuild -showBuildSettings {} -scheme '{}'",
+        escape_single_quote(&root.to_string_lossy()),
+        target_arg,
+        escape_single_quote(scheme)
+    );
+
+    let output = Command::new("/bin/zsh").arg("-lc").arg(cmd).output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let text = String::from_utf8_lossy(&output.stdout);
+    extract_build_setting(&text, key)
+}
+
+fn extract_build_setting(output: &str, key: &str) -> Option<String> {
+    let prefix = format!("{key} = ");
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if let Some(value) = trimmed.strip_prefix(&prefix) {
+            let parsed = value.trim();
+            if !parsed.is_empty() {
+                return Some(parsed.to_string());
+            }
+        }
+    }
+    None
 }
