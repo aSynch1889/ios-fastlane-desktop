@@ -57,6 +57,61 @@ pub struct IdentityResult {
     pub team_id: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DoctorCheck {
+    pub name: String,
+    pub status: String,
+    pub detail: String,
+    pub suggestion: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DoctorReport {
+    pub checks: Vec<DoctorCheck>,
+}
+
+#[tauri::command]
+pub fn doctor_check(project_path: Option<String>) -> Result<DoctorReport, String> {
+    let root = project_path
+        .filter(|p| !p.trim().is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    let checks = vec![
+        check_cmd("Xcode CLI", "/bin/zsh", &["-lc", "xcode-select -p"], None),
+        check_cmd("Xcode Build", "/bin/zsh", &["-lc", "xcodebuild -version"], None),
+        check_cmd("Ruby", "/bin/zsh", &["-lc", "ruby -v"], Some("Install Ruby and ensure it is in PATH.")),
+        check_cmd(
+            "Bundler",
+            "/bin/zsh",
+            &["-lc", "bundle -v"],
+            Some("Run `gem install bundler` or ensure Bundler is available."),
+        ),
+        check_cmd(
+            "Fastlane",
+            "/bin/zsh",
+            &["-lc", "fastlane --version"],
+            Some("Run `bundle install` or install fastlane."),
+        ),
+        check_cmd(
+            "CocoaPods",
+            "/bin/zsh",
+            &["-lc", "pod --version"],
+            Some("Install CocoaPods if your project depends on Pods."),
+        ),
+        check_cmd(
+            "Gemfile",
+            "/bin/zsh",
+            &["-lc", &format!("cd '{}' && test -f Gemfile && echo ok", escape_single_quote(&root.to_string_lossy()))],
+            Some("Create Gemfile to manage fastlane gems consistently."),
+        ),
+    ];
+
+    Ok(DoctorReport { checks })
+}
+
 #[tauri::command]
 pub fn scan_project(project_path: String) -> Result<ScanResult, String> {
     let root = PathBuf::from(project_path.clone());
@@ -395,6 +450,44 @@ fn extract_build_setting(output: &str, key: &str) -> Option<String> {
         }
     }
     None
+}
+
+fn check_cmd(
+    name: &str,
+    program: &str,
+    args: &[&str],
+    suggestion: Option<&str>,
+) -> DoctorCheck {
+    let out = Command::new(program).args(args).output();
+    match out {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            if output.status.success() {
+                let detail = if stdout.is_empty() { "ok".to_string() } else { stdout };
+                DoctorCheck {
+                    name: name.to_string(),
+                    status: "pass".to_string(),
+                    detail,
+                    suggestion: None,
+                }
+            } else {
+                let detail = if !stderr.is_empty() { stderr } else { stdout };
+                DoctorCheck {
+                    name: name.to_string(),
+                    status: "warn".to_string(),
+                    detail: if detail.is_empty() { "command failed".to_string() } else { detail },
+                    suggestion: suggestion.map(|s| s.to_string()),
+                }
+            }
+        }
+        Err(e) => DoctorCheck {
+            name: name.to_string(),
+            status: "warn".to_string(),
+            detail: format!("failed to execute: {}", e),
+            suggestion: suggestion.map(|s| s.to_string()),
+        },
+    }
 }
 
 fn resolve_identity_internal(

@@ -5,6 +5,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             commands::scan_project,
+            commands::doctor_check,
             commands::resolve_identity,
             commands::generate_fastlane_files,
             commands::run_lane,

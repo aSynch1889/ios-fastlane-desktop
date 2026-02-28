@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import type {
+  DoctorReport,
   IdentityResult,
   LaneRunResult,
   ProjectConfig,
@@ -18,6 +19,10 @@ export async function selectProjectPath(): Promise<string | null> {
 
 export async function scanProject(projectPath: string): Promise<ScanResult> {
   return invoke("scan_project", { projectPath });
+}
+
+export async function doctorCheck(projectPath?: string): Promise<DoctorReport> {
+  return invoke("doctor_check", { projectPath: projectPath || null });
 }
 
 export async function resolveIdentity(

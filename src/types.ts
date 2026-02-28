@@ -43,3 +43,14 @@ export interface IdentityResult {
   bundleIdDis?: string;
   teamId?: string;
 }
+
+export interface DoctorCheck {
+  name: string;
+  status: "pass" | "warn" | "fail";
+  detail: string;
+  suggestion?: string;
+}
+
+export interface DoctorReport {
+  checks: DoctorCheck[];
+}

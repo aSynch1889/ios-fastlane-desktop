@@ -176,6 +176,46 @@ pre {
   padding: 8px;
 }
 
+.doctor-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.doctor-item {
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 12px;
+  border: 1px solid #cfdcf0;
+  background: #f8fbff;
+}
+
+.doctor-pass {
+  border-color: #b9dfc3;
+  background: #effaf2;
+}
+
+.doctor-warn {
+  border-color: #f0d4a3;
+  background: #fff8ea;
+}
+
+.doctor-fail {
+  border-color: #f0a8a8;
+  background: #fff1f1;
+}
+
+.doctor-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.doctor-tip {
+  margin-top: 4px;
+  color: #5c4a12;
+}
+
 .scan-card {
   margin-top: 8px;
   border: 1px dashed #9eb5d6;

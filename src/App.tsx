@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { defaultConfig } from "./lib/defaultConfig";
 import {
+  doctorCheck,
   generateFastlaneFiles,
   loadProfile,
   resolveIdentity,
@@ -9,7 +10,7 @@ import {
   selectProjectPath,
   scanProject
 } from "./lib/tauri";
-import type { ProjectConfig, ScanResult } from "./types";
+import type { DoctorReport, ProjectConfig, ScanResult } from "./types";
 
 const laneButtons = [
   "validate_config",
@@ -34,6 +35,7 @@ function App() {
   const [hideThirdPartySchemes, setHideThirdPartySchemes] = useState(true);
   const [mainScheme, setMainScheme] = useState("");
   const [identityDiff, setIdentityDiff] = useState<string[]>([]);
+  const [doctorReport, setDoctorReport] = useState<DoctorReport | null>(null);
 
   const generatedPreview = useMemo(() => {
     return [
@@ -272,6 +274,20 @@ function App() {
     }
   }
 
+  async function onDoctorCheck() {
+    setBusy(true);
+    try {
+      const report = await doctorCheck(config.projectPath.trim() || undefined);
+      setDoctorReport(report);
+      const passCount = report.checks.filter((c) => c.status === "pass").length;
+      setLog(`Doctor completed: ${passCount}/${report.checks.length} checks passed.`);
+    } catch (error) {
+      setLog(`Doctor failed: ${String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="app-shell">
       <header>
@@ -419,6 +435,25 @@ function App() {
         </section>
 
         <section className="panel">
+          <h2>Doctor</h2>
+          <div className="inline">
+            <button disabled={busy} onClick={onDoctorCheck}>Run Doctor</button>
+          </div>
+          {doctorReport && (
+            <div className="doctor-list">
+              {doctorReport.checks.map((check) => (
+                <div key={check.name} className={`doctor-item doctor-${check.status}`}>
+                  <div className="doctor-head">
+                    <strong>{check.name}</strong>
+                    <span>{check.status.toUpperCase()}</span>
+                  </div>
+                  <div>{check.detail}</div>
+                  {check.suggestion && <div className="doctor-tip">Suggestion: {check.suggestion}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+
           <h2>Preview</h2>
           <pre>{generatedPreview}</pre>
 
