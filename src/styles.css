@@ -147,6 +147,35 @@ pre {
   flex: 0 0 auto;
 }
 
+.scheme-controls {
+  border: 1px dashed #c4d3ea;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 8px 0;
+}
+
+.inline-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inline-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 0;
+}
+
+.identity-diff {
+  margin-top: 8px;
+  border: 1px solid #b7d2f4;
+  border-radius: 8px;
+  background: #ecf4ff;
+  color: #203056;
+  font-size: 12px;
+  padding: 8px;
+}
+
 .scan-card {
   margin-top: 8px;
   border: 1px dashed #9eb5d6;

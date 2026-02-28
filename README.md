@@ -15,6 +15,7 @@ This project turns common iOS fastlane workflows into a GUI:
 
 - Project scanner command (`scan_project`) with `xcodebuild -list` scheme parsing
 - Auto-detect build identity (`PRODUCT_BUNDLE_IDENTIFIER`, `DEVELOPMENT_TEAM`) from build settings
+- Scheme confirmation tools (hide third-party schemes, lock main scheme, re-apply identity)
 - Config form and preview panel
 - Fastlane env generator (`generate_fastlane_files`)
 - Lane runner (`run_lane`) for `bundle exec fastlane ios <lane>`
