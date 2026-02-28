@@ -50,6 +50,28 @@ pub struct LaneRunResult {
 }
 
 #[tauri::command]
+pub fn select_project_path() -> Result<Option<String>, String> {
+    let script = "try\nPOSIX path of (choose folder with prompt \"Select iOS project folder\")\non error number -128\nreturn \"\"\nend try";
+    let output = Command::new("/usr/bin/osascript")
+        .arg("-e")
+        .arg(script)
+        .output()
+        .map_err(|e| format!("Failed to open folder picker: {}", e))?;
+
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Folder picker failed: {}", err.trim()));
+    }
+
+    let selected = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if selected.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(selected))
+    }
+}
+
+#[tauri::command]
 pub fn scan_project(project_path: String) -> Result<ScanResult, String> {
     let root = PathBuf::from(project_path.clone());
     if !root.exists() {

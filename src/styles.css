@@ -57,7 +57,11 @@ label {
   color: #243253;
 }
 
-input,
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="url"],
+input:not([type]),
 select {
   width: 100%;
   margin-top: 6px;
@@ -68,8 +72,21 @@ select {
   background: #fff;
 }
 
+.path-picker {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.path-picker button {
+  margin-top: 6px;
+  white-space: nowrap;
+}
+
 .inline {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 10px;
 }
@@ -121,6 +138,13 @@ pre {
   align-items: center;
   gap: 6px;
   margin: 0;
+}
+
+.checkboxes input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 0;
+  flex: 0 0 auto;
 }
 
 .scan-card {

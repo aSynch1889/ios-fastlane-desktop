@@ -1,6 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { LaneRunResult, ProjectConfig, ScanResult } from "../types";
 
+export async function selectProjectPath(): Promise<string | null> {
+  return invoke("select_project_path");
+}
+
 export async function scanProject(projectPath: string): Promise<ScanResult> {
   return invoke("scan_project", { projectPath });
 }

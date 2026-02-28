@@ -5,6 +5,7 @@ import {
   loadProfile,
   runLane,
   saveProfile,
+  selectProjectPath,
   scanProject
 } from "./lib/tauri";
 import type { ProjectConfig, ScanResult } from "./types";
@@ -73,6 +74,23 @@ function App() {
       setLog(`Scan complete for ${result.projectName}.`);
     } catch (error) {
       setLog(`Scan failed: ${String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onBrowseProjectPath() {
+    setBusy(true);
+    try {
+      const selectedPath = await selectProjectPath();
+      if (selectedPath) {
+        patch("projectPath", selectedPath);
+        setLog(`Selected project path: ${selectedPath}`);
+      } else {
+        setLog("Project path selection canceled.");
+      }
+    } catch (error) {
+      setLog(`Open folder failed: ${String(error)}`);
     } finally {
       setBusy(false);
     }
@@ -151,11 +169,14 @@ function App() {
           <h2>Project</h2>
           <label>
             Project Path
-            <input
-              value={config.projectPath}
-              onChange={(e) => patch("projectPath", e.target.value)}
-              placeholder="/abs/path/to/iOS/project"
-            />
+            <div className="path-picker">
+              <input
+                value={config.projectPath}
+                onChange={(e) => patch("projectPath", e.target.value)}
+                placeholder="/abs/path/to/iOS/project"
+              />
+              <button disabled={busy} onClick={onBrowseProjectPath} type="button">Browse</button>
+            </div>
           </label>
           <div className="inline">
             <button disabled={busy} onClick={onScan}>Scan</button>
