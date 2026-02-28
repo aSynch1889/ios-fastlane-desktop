@@ -59,7 +59,10 @@ pub fn scan_project(project_path: String) -> Result<ScanResult, String> {
     let workspace = find_first_with_ext(&root, "xcworkspace");
     let xcodeproj = find_first_with_ext(&root, "xcodeproj");
 
-    let schemes = vec!["App".to_string()];
+    let schemes = match parse_schemes_from_xcodebuild(&root, workspace.as_deref(), xcodeproj.as_deref()) {
+        Ok(list) if !list.is_empty() => list,
+        _ => vec![],
+    };
     let project_name = root
         .file_name()
         .and_then(OsStr::to_str)
@@ -75,6 +78,37 @@ pub fn scan_project(project_path: String) -> Result<ScanResult, String> {
         bundle_id_dis: None,
         team_id: None,
     })
+}
+
+#[tauri::command]
+pub fn save_profile(config: ProjectConfig) -> Result<String, String> {
+    let project_root = PathBuf::from(&config.project_path);
+    if !project_root.exists() {
+        return Err(format!("projectPath does not exist: {}", config.project_path));
+    }
+
+    let profile_dir = project_root.join(".fastlane-desktop");
+    fs::create_dir_all(&profile_dir).map_err(|e| format!("Create profile dir failed: {}", e))?;
+    let profile_path = profile_dir.join("profile.json");
+    let payload = serde_json::to_string_pretty(&config)
+        .map_err(|e| format!("Serialize profile failed: {}", e))?;
+    fs::write(&profile_path, payload).map_err(|e| format!("Write profile failed: {}", e))?;
+
+    Ok(format!("Profile saved: {}", profile_path.display()))
+}
+
+#[tauri::command]
+pub fn load_profile(project_path: String) -> Result<ProjectConfig, String> {
+    let root = PathBuf::from(&project_path);
+    let profile_path = root.join(".fastlane-desktop").join("profile.json");
+    if !profile_path.exists() {
+        return Err(format!("Profile not found: {}", profile_path.display()));
+    }
+
+    let content = fs::read_to_string(&profile_path)
+        .map_err(|e| format!("Read profile failed: {}", e))?;
+    serde_json::from_str::<ProjectConfig>(&content)
+        .map_err(|e| format!("Parse profile failed: {}", e))
 }
 
 #[tauri::command]
@@ -180,4 +214,69 @@ fn render_env(config: &ProjectConfig) -> String {
 
 fn escape_single_quote(value: &str) -> String {
     value.replace('\'', "'\\''")
+}
+
+fn parse_schemes_from_xcodebuild(
+    root: &Path,
+    workspace: Option<&str>,
+    xcodeproj: Option<&str>,
+) -> Result<Vec<String>, String> {
+    let target_arg = if let Some(ws) = workspace {
+        format!("-workspace '{}'", escape_single_quote(ws))
+    } else if let Some(proj) = xcodeproj {
+        format!("-project '{}'", escape_single_quote(proj))
+    } else {
+        return Ok(vec![]);
+    };
+
+    let cmd = format!(
+        "cd '{}' && xcodebuild -list {}",
+        escape_single_quote(&root.to_string_lossy()),
+        target_arg
+    );
+
+    let output = Command::new("/bin/zsh")
+        .arg("-lc")
+        .arg(cmd)
+        .output()
+        .map_err(|e| format!("xcodebuild -list failed: {}", e))?;
+
+    let text = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    Ok(extract_schemes(&text))
+}
+
+fn extract_schemes(xcodebuild_output: &str) -> Vec<String> {
+    let mut in_schemes = false;
+    let mut schemes = vec![];
+
+    for line in xcodebuild_output.lines() {
+        let trimmed = line.trim();
+        if trimmed.eq_ignore_ascii_case("Schemes:") {
+            in_schemes = true;
+            continue;
+        }
+        if !in_schemes {
+            continue;
+        }
+
+        if trimmed.is_empty() {
+            if !schemes.is_empty() {
+                break;
+            }
+            continue;
+        }
+
+        // Stop when entering another top-level section.
+        if !line.starts_with(' ') && !line.starts_with('\t') {
+            break;
+        }
+        schemes.push(trimmed.to_string());
+    }
+
+    schemes
 }

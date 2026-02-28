@@ -12,3 +12,11 @@ export async function generateFastlaneFiles(config: ProjectConfig): Promise<stri
 export async function runLane(projectPath: string, lane: string): Promise<LaneRunResult> {
   return invoke("run_lane", { projectPath, lane });
 }
+
+export async function saveProfile(config: ProjectConfig): Promise<string> {
+  return invoke("save_profile", { config });
+}
+
+export async function loadProfile(projectPath: string): Promise<ProjectConfig> {
+  return invoke("load_profile", { projectPath });
+}

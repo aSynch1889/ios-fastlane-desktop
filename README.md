@@ -13,10 +13,11 @@ This project turns common iOS fastlane workflows into a GUI:
 
 ## Current prototype scope
 
-- Project scanner command (`scan_project`)
+- Project scanner command (`scan_project`) with `xcodebuild -list` scheme parsing
 - Config form and preview panel
 - Fastlane env generator (`generate_fastlane_files`)
 - Lane runner (`run_lane`) for `bundle exec fastlane ios <lane>`
+- Profile persistence (`save_profile` / `load_profile`) at `.fastlane-desktop/profile.json`
 
 ## Tech stack
 
@@ -54,7 +55,6 @@ npm run tauri build
 ## Notes
 
 - This is an MVP prototype.
-- `scan_project` currently returns a basic scheme placeholder and should be expanded with real `xcodebuild -list` parsing in next iteration.
 - `run_lane` requires local Ruby/Bundler/Fastlane environment to be ready.
 
 ## Next steps

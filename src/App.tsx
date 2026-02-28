@@ -1,6 +1,12 @@
 import { useMemo, useState } from "react";
 import { defaultConfig } from "./lib/defaultConfig";
-import { generateFastlaneFiles, runLane, scanProject } from "./lib/tauri";
+import {
+  generateFastlaneFiles,
+  loadProfile,
+  runLane,
+  saveProfile,
+  scanProject
+} from "./lib/tauri";
 import type { ProjectConfig, ScanResult } from "./types";
 
 const laneButtons = [
@@ -84,6 +90,39 @@ function App() {
     }
   }
 
+  async function onSaveProfile() {
+    if (!config.projectPath.trim()) {
+      setLog("projectPath is required to save profile.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const output = await saveProfile(config);
+      setLog(output);
+    } catch (error) {
+      setLog(`Save profile failed: ${String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onLoadProfile() {
+    if (!config.projectPath.trim()) {
+      setLog("projectPath is required to load profile.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const loaded = await loadProfile(config.projectPath.trim());
+      setConfig(loaded);
+      setLog("Profile loaded.");
+    } catch (error) {
+      setLog(`Load profile failed: ${String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onRunLane(lane: string) {
     if (!config.projectPath.trim()) {
       setLog("projectPath is required to run lane.");
@@ -121,6 +160,8 @@ function App() {
           <div className="inline">
             <button disabled={busy} onClick={onScan}>Scan</button>
             <button disabled={busy} onClick={onGenerate}>Generate Files</button>
+            <button disabled={busy} onClick={onSaveProfile}>Save Profile</button>
+            <button disabled={busy} onClick={onLoadProfile}>Load Profile</button>
           </div>
 
           <h3>Build Identity</h3>
