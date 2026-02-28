@@ -49,6 +49,14 @@ pub struct LaneRunResult {
     pub lane: String,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IdentityResult {
+    pub bundle_id_dev: Option<String>,
+    pub bundle_id_dis: Option<String>,
+    pub team_id: Option<String>,
+}
+
 #[tauri::command]
 pub fn scan_project(project_path: String) -> Result<ScanResult, String> {
     let root = PathBuf::from(project_path.clone());
@@ -64,18 +72,13 @@ pub fn scan_project(project_path: String) -> Result<ScanResult, String> {
         _ => vec![],
     };
     let (scheme_dev, scheme_dis) = pick_dev_dis_schemes(&schemes);
-    let bundle_id_dev = scheme_dev
-        .as_deref()
-        .and_then(|scheme| resolve_build_setting(&root, workspace.as_deref(), xcodeproj.as_deref(), scheme, "PRODUCT_BUNDLE_IDENTIFIER"));
-    let bundle_id_dis = scheme_dis
-        .as_deref()
-        .and_then(|scheme| resolve_build_setting(&root, workspace.as_deref(), xcodeproj.as_deref(), scheme, "PRODUCT_BUNDLE_IDENTIFIER"));
-    let team_id_dev = scheme_dev
-        .as_deref()
-        .and_then(|scheme| resolve_build_setting(&root, workspace.as_deref(), xcodeproj.as_deref(), scheme, "DEVELOPMENT_TEAM"));
-    let team_id_dis = scheme_dis
-        .as_deref()
-        .and_then(|scheme| resolve_build_setting(&root, workspace.as_deref(), xcodeproj.as_deref(), scheme, "DEVELOPMENT_TEAM"));
+    let identity = resolve_identity_internal(
+        &root,
+        workspace.as_deref(),
+        xcodeproj.as_deref(),
+        scheme_dev,
+        scheme_dis,
+    );
     let project_name = root
         .file_name()
         .and_then(OsStr::to_str)
@@ -87,10 +90,39 @@ pub fn scan_project(project_path: String) -> Result<ScanResult, String> {
         workspace,
         xcodeproj,
         schemes,
-        bundle_id_dev,
-        bundle_id_dis,
-        team_id: team_id_dis.or(team_id_dev),
+        bundle_id_dev: identity.bundle_id_dev,
+        bundle_id_dis: identity.bundle_id_dis,
+        team_id: identity.team_id,
     })
+}
+
+#[tauri::command]
+pub fn resolve_identity(
+    project_path: String,
+    workspace: Option<String>,
+    xcodeproj: Option<String>,
+    scheme_dev: String,
+    scheme_dis: String,
+) -> Result<IdentityResult, String> {
+    let root = PathBuf::from(&project_path);
+    if !root.exists() {
+        return Err(format!("Project path not found: {}", project_path));
+    }
+
+    let resolved_workspace = workspace
+        .filter(|v| !v.trim().is_empty())
+        .or_else(|| find_first_with_ext(&root, "xcworkspace"));
+    let resolved_xcodeproj = xcodeproj
+        .filter(|v| !v.trim().is_empty())
+        .or_else(|| find_first_with_ext(&root, "xcodeproj"));
+
+    Ok(resolve_identity_internal(
+        &root,
+        resolved_workspace.as_deref(),
+        resolved_xcodeproj.as_deref(),
+        Some(scheme_dev),
+        Some(scheme_dis),
+    ))
 }
 
 #[tauri::command]
@@ -363,4 +395,31 @@ fn extract_build_setting(output: &str, key: &str) -> Option<String> {
         }
     }
     None
+}
+
+fn resolve_identity_internal(
+    root: &Path,
+    workspace: Option<&str>,
+    xcodeproj: Option<&str>,
+    scheme_dev: Option<String>,
+    scheme_dis: Option<String>,
+) -> IdentityResult {
+    let bundle_id_dev = scheme_dev
+        .as_deref()
+        .and_then(|scheme| resolve_build_setting(root, workspace, xcodeproj, scheme, "PRODUCT_BUNDLE_IDENTIFIER"));
+    let bundle_id_dis = scheme_dis
+        .as_deref()
+        .and_then(|scheme| resolve_build_setting(root, workspace, xcodeproj, scheme, "PRODUCT_BUNDLE_IDENTIFIER"));
+    let team_id_dev = scheme_dev
+        .as_deref()
+        .and_then(|scheme| resolve_build_setting(root, workspace, xcodeproj, scheme, "DEVELOPMENT_TEAM"));
+    let team_id_dis = scheme_dis
+        .as_deref()
+        .and_then(|scheme| resolve_build_setting(root, workspace, xcodeproj, scheme, "DEVELOPMENT_TEAM"));
+
+    IdentityResult {
+        bundle_id_dev,
+        bundle_id_dis,
+        team_id: team_id_dis.or(team_id_dev),
+    }
 }

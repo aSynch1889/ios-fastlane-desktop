@@ -37,3 +37,9 @@ export interface LaneRunResult {
   output: string;
   lane: string;
 }
+
+export interface IdentityResult {
+  bundleIdDev?: string;
+  bundleIdDis?: string;
+  teamId?: string;
+}

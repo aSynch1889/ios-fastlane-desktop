@@ -1,6 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import type { LaneRunResult, ProjectConfig, ScanResult } from "../types";
+import type {
+  IdentityResult,
+  LaneRunResult,
+  ProjectConfig,
+  ScanResult
+} from "../types";
 
 export async function selectProjectPath(): Promise<string | null> {
   const selected = await open({
@@ -13,6 +18,22 @@ export async function selectProjectPath(): Promise<string | null> {
 
 export async function scanProject(projectPath: string): Promise<ScanResult> {
   return invoke("scan_project", { projectPath });
+}
+
+export async function resolveIdentity(
+  projectPath: string,
+  workspace: string,
+  xcodeproj: string,
+  schemeDev: string,
+  schemeDis: string
+): Promise<IdentityResult> {
+  return invoke("resolve_identity", {
+    projectPath,
+    workspace: workspace || null,
+    xcodeproj: xcodeproj || null,
+    schemeDev,
+    schemeDis
+  });
 }
 
 export async function generateFastlaneFiles(config: ProjectConfig): Promise<string> {

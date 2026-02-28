@@ -3,6 +3,7 @@ import { defaultConfig } from "./lib/defaultConfig";
 import {
   generateFastlaneFiles,
   loadProfile,
+  resolveIdentity,
   runLane,
   saveProfile,
   selectProjectPath,
@@ -55,6 +56,16 @@ function App() {
     setConfig((prev) => ({ ...prev, [key]: value }));
   }
 
+  function pickSuggestedSchemes(schemes: string[]) {
+    if (schemes.length === 0) {
+      return { dev: "", dis: "" };
+    }
+
+    const dev = schemes.find((s) => /dev|debug|staging/i.test(s)) ?? schemes[0];
+    const dis = schemes.find((s) => /prod|release|appstore/i.test(s)) ?? schemes.find((s) => s !== dev) ?? schemes[0];
+    return { dev, dis };
+  }
+
   async function onScan() {
     if (!config.projectPath.trim()) {
       setLog("Please input projectPath first.");
@@ -63,17 +74,50 @@ function App() {
     setBusy(true);
     try {
       const result = await scanProject(config.projectPath.trim());
+      const suggested = pickSuggestedSchemes(result.schemes);
       setScanResult(result);
       patch("workspace", result.workspace ?? "");
       patch("xcodeproj", result.xcodeproj ?? "");
-      patch("schemeDev", result.schemes[0] ?? "");
-      patch("schemeDis", result.schemes[0] ?? "");
+      patch("schemeDev", suggested.dev);
+      patch("schemeDis", suggested.dis);
       patch("bundleIdDev", result.bundleIdDev ?? "");
       patch("bundleIdDis", result.bundleIdDis ?? "");
       patch("teamId", result.teamId ?? "");
       setLog(`Scan complete for ${result.projectName}.`);
     } catch (error) {
       setLog(`Scan failed: ${String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onApplyIdentity() {
+    if (!config.projectPath.trim()) {
+      setLog("projectPath is required to resolve identity.");
+      return;
+    }
+    if (!config.schemeDev.trim() || !config.schemeDis.trim()) {
+      setLog("Please select schemeDev and schemeDis first.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const identity = await resolveIdentity(
+        config.projectPath.trim(),
+        config.workspace,
+        config.xcodeproj,
+        config.schemeDev,
+        config.schemeDis
+      );
+      patch("bundleIdDev", identity.bundleIdDev ?? "");
+      patch("bundleIdDis", identity.bundleIdDis ?? "");
+      if (identity.teamId) {
+        patch("teamId", identity.teamId);
+      }
+      setLog("Identity applied from selected schemes.");
+    } catch (error) {
+      setLog(`Resolve identity failed: ${String(error)}`);
     } finally {
       setBusy(false);
     }
@@ -196,12 +240,31 @@ function App() {
           </label>
           <label>
             Scheme Dev
-            <input value={config.schemeDev} onChange={(e) => patch("schemeDev", e.target.value)} />
+            {scanResult?.schemes.length ? (
+              <select value={config.schemeDev} onChange={(e) => patch("schemeDev", e.target.value)}>
+                {scanResult.schemes.map((scheme) => (
+                  <option key={scheme} value={scheme}>{scheme}</option>
+                ))}
+              </select>
+            ) : (
+              <input value={config.schemeDev} onChange={(e) => patch("schemeDev", e.target.value)} />
+            )}
           </label>
           <label>
             Scheme Dis
-            <input value={config.schemeDis} onChange={(e) => patch("schemeDis", e.target.value)} />
+            {scanResult?.schemes.length ? (
+              <select value={config.schemeDis} onChange={(e) => patch("schemeDis", e.target.value)}>
+                {scanResult.schemes.map((scheme) => (
+                  <option key={scheme} value={scheme}>{scheme}</option>
+                ))}
+              </select>
+            ) : (
+              <input value={config.schemeDis} onChange={(e) => patch("schemeDis", e.target.value)} />
+            )}
           </label>
+          <div className="inline">
+            <button disabled={busy || !scanResult?.schemes.length} onClick={onApplyIdentity}>Apply Scheme Identity</button>
+          </div>
           <label>
             Bundle ID Dev
             <input value={config.bundleIdDev} onChange={(e) => patch("bundleIdDev", e.target.value)} />
