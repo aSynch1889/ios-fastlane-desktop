@@ -1,0 +1,21 @@
+[package]
+name = "ios-fastlane-desktop"
+version = "0.1.0"
+description = "Desktop app to configure and run iOS fastlane"
+authors = ["aSynch1889"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.77"
+
+[build-dependencies]
+tauri-build = { version = "2.0.0", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2.0.0", features = [] }
+walkdir = "2"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
