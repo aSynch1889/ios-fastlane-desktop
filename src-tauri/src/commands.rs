@@ -160,6 +160,15 @@ pub fn doctor_check(project_path: Option<String>) -> Result<DoctorReport, String
         check_cmd("Xcode Build", "/bin/zsh", &["-lc", "xcodebuild -version"], None),
         check_cmd("Ruby", "/bin/zsh", &["-lc", "ruby -v"], Some("Install Ruby and ensure it is in PATH.")),
         check_cmd(
+            "Ruby Compatibility",
+            "/bin/zsh",
+            &[
+                "-lc",
+                "ruby -e 'v=RUBY_VERSION.split(\".\").map(&:to_i); abort(\"Ruby >= 4.0 is not supported by this fastlane setup\") if v[0] >= 4; puts \"Ruby #{RUBY_VERSION} compatible\"'",
+            ],
+            Some("Use Ruby 3.1~3.3 via rbenv/rvm/asdf, then run with `bundle exec fastlane ...`."),
+        ),
+        check_cmd(
             "Bundler",
             "/bin/zsh",
             &["-lc", "bundle -v"],
@@ -449,9 +458,9 @@ pub fn bundle_install_and_validate(project_path: String) -> Result<LaneRunResult
     let normalized_project_path = normalized_project_root.to_string_lossy().to_string();
     let output = Command::new("/bin/zsh")
         .arg("-lc")
-        .arg(format!(
-            "cd '{}' && FASTLANE_SKIP_UPDATE_CHECK=1 FASTLANE_DISABLE_COLORS=1 CI=1 bundle install && FASTLANE_SKIP_UPDATE_CHECK=1 FASTLANE_DISABLE_COLORS=1 CI=1 bundle exec fastlane ios validate_config",
-            escape_single_quote(&normalized_project_path)
+        .arg(ruby_aware_shell_command(
+            &normalized_project_path,
+            "FASTLANE_SKIP_UPDATE_CHECK=1 FASTLANE_DISABLE_COLORS=1 CI=1 bundle install && FASTLANE_SKIP_UPDATE_CHECK=1 FASTLANE_DISABLE_COLORS=1 CI=1 bundle exec fastlane ios validate_config",
         ))
         .output()
         .map_err(|e| format!("Failed to run bundle install + validate_config: {}", e))?;
@@ -526,16 +535,34 @@ pub fn run_lane(project_path: String, lane: String) -> Result<LaneRunResult, Str
 }
 
 fn run_lane_shell(project_path: &str, lane: &str, env_prefix: &str) -> Result<std::process::Output, String> {
+    let lane_escaped = escape_single_quote(lane);
+    let body = format!("{} bundle exec fastlane ios '{}'", env_prefix, lane_escaped);
     Command::new("/bin/zsh")
         .arg("-lc")
-        .arg(format!(
-            "cd '{}' && {} bundle exec fastlane ios {}",
-            escape_single_quote(project_path),
-            env_prefix,
-            lane
-        ))
+        .arg(ruby_aware_shell_command(project_path, &body))
         .output()
         .map_err(|e| format!("Failed to run lane: {}", e))
+}
+
+fn ruby_aware_shell_command(project_path: &str, body: &str) -> String {
+    let project = escape_single_quote(project_path);
+    let body_escaped = body.replace('\'', "'\\''");
+    format!(
+        "cd '{}' && RUBY_VER=$(tr -d '[:space:]' < .ruby-version 2>/dev/null || true) && \
+if command -v rbenv >/dev/null 2>&1; then \
+  eval \"$(rbenv init - zsh)\" >/dev/null 2>&1 || true; \
+  if [ -n \"$RUBY_VER\" ]; then rbenv shell \"$RUBY_VER\" >/dev/null 2>&1 || true; fi; \
+  /bin/zsh -lc '{}'; \
+elif [ -x \"$HOME/.rvm/bin/rvm\" ] && [ -n \"$RUBY_VER\" ]; then \
+  \"$HOME/.rvm/bin/rvm\" \"$RUBY_VER\" do /bin/zsh -lc '{}'; \
+elif command -v asdf >/dev/null 2>&1 && [ -n \"$RUBY_VER\" ]; then \
+  asdf shell ruby \"$RUBY_VER\" >/dev/null 2>&1 || true; \
+  /bin/zsh -lc '{}'; \
+else \
+  /bin/zsh -lc '{}'; \
+fi",
+        project, body_escaped, body_escaped, body_escaped, body_escaped
+    )
 }
 
 fn lane_failed_for_missing_test_action(output: &std::process::Output) -> bool {
