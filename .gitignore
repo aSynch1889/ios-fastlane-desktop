@@ -1,7 +1,66 @@
-node_modules
-dist
-.vscode
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+dist-ssr/
+src-tauri/target/
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS files
 .DS_Store
-src-tauri/target
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Logs
 *.log
-build-logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+build-logs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Certificate and security files (IMPORTANT)
+*.p12
+*.pem
+*.key
+*.cert
+*.cer
+*.mobileprovision
+*.provisionprofile
+*.entitlements
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Misc
+*.tsbuildinfo

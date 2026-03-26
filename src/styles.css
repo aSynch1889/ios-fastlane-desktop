@@ -225,6 +225,64 @@ pre {
   font-size: 12px;
 }
 
+.status-badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-left: 4px;
+}
+
+.status-success {
+  background: #e9f8ef;
+  color: #156739;
+  border: 1px solid #9dd6b4;
+}
+
+.status-warn {
+  background: #fff5e7;
+  color: #8a5a0f;
+  border: 1px solid #efce8d;
+}
+
+.status-error {
+  background: #ffecec;
+  color: #982d2d;
+  border: 1px solid #e4a3a3;
+}
+
+.generate-reasons {
+  margin-top: 6px;
+}
+
+.file-status-list {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.file-status-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  border-radius: 8px;
+  padding: 6px 8px;
+  border: 1px solid #d3deee;
+}
+
+.file-success {
+  background: #f2fbf5;
+  border-color: #b9dfc3;
+}
+
+.file-error {
+  background: #fff3f3;
+  border-color: #efb0b0;
+}
+
 @media (max-width: 980px) {
   .grid {
     grid-template-columns: 1fr;

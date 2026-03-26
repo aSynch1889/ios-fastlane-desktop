@@ -9,6 +9,7 @@ fn main() {
             commands::resolve_identity,
             commands::generate_fastlane_files,
             commands::run_lane,
+            commands::bundle_install_and_validate,
             commands::save_profile,
             commands::load_profile,
         ])

@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import type {
   DoctorReport,
+  GenerateResult,
   IdentityResult,
   LaneRunResult,
   ProjectConfig,
@@ -41,12 +42,16 @@ export async function resolveIdentity(
   });
 }
 
-export async function generateFastlaneFiles(config: ProjectConfig): Promise<string> {
+export async function generateFastlaneFiles(config: ProjectConfig): Promise<GenerateResult> {
   return invoke("generate_fastlane_files", { config });
 }
 
 export async function runLane(projectPath: string, lane: string): Promise<LaneRunResult> {
   return invoke("run_lane", { projectPath, lane });
+}
+
+export async function bundleInstallAndValidate(projectPath: string): Promise<LaneRunResult> {
+  return invoke("bundle_install_and_validate", { projectPath });
 }
 
 export async function saveProfile(config: ProjectConfig): Promise<string> {

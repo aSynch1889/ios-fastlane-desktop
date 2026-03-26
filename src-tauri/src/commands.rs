@@ -430,6 +430,7 @@ pub fn generate_fastlane_files(config: ProjectConfig) -> Result<GenerateResult, 
         fs::write(&runtime_env_path, render_runtime_env(&config))
             .map_err(|e| format!("Write runtime env failed: {}", e))?;
         ensure_fastlane_plugin_gemfile(&project_root)?;
+        patch_generated_doctor_script_for_bash3(&project_root)?;
         runtime_env_written = true;
     }
 
@@ -673,6 +674,29 @@ fn ensure_fastlane_plugin_gemfile(project_root: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn patch_generated_doctor_script_for_bash3(project_root: &Path) -> Result<(), String> {
+    let doctor_script = project_root
+        .join("scripts")
+        .join("doctor_fastlane_env.sh");
+    if !doctor_script.exists() {
+        return Ok(());
+    }
+
+    let content = fs::read_to_string(&doctor_script)
+        .map_err(|e| format!("Read doctor script failed: {}", e))?;
+    if !content.contains("${IS_CI,,}") {
+        return Ok(());
+    }
+
+    let patched = content.replace(
+        "${IS_CI,,}",
+        "$(printf '%s' \"$IS_CI\" | tr '[:upper:]' '[:lower:]')",
+    );
+    fs::write(&doctor_script, patched)
+        .map_err(|e| format!("Patch doctor script compatibility failed: {}", e))?;
+    Ok(())
+}
+
 fn normalize_bootstrap_mode(raw: &str) -> Result<&'static str, String> {
     match raw.trim() {
         "" | "standard" => Ok("standard"),
@@ -748,6 +772,21 @@ fn parse_generated_paths(project_root: &Path, stdout: &str) -> Vec<String> {
         paths.push(fastlane_dir.join(".env.fastlane.example").display().to_string());
         paths.push(fastlane_dir.join(".env.fastlane.staging.example").display().to_string());
         paths.push(fastlane_dir.join(".env.fastlane.prod.example").display().to_string());
+        paths.push(project_root.join("Gemfile").display().to_string());
+        paths.push(
+            project_root
+                .join("scripts")
+                .join("doctor_fastlane_env.sh")
+                .display()
+                .to_string(),
+        );
+        paths.push(
+            project_root
+                .join("scripts")
+                .join("fastlane_run.sh")
+                .display()
+                .to_string(),
+        );
     }
 
     paths
@@ -762,6 +801,17 @@ fn expected_generated_files(project_root: &Path, generated_paths: &[String]) -> 
         fastlane_dir.join(".env.fastlane.example").display().to_string(),
         fastlane_dir.join(".env.fastlane.staging.example").display().to_string(),
         fastlane_dir.join(".env.fastlane.prod.example").display().to_string(),
+        project_root.join("Gemfile").display().to_string(),
+        project_root
+            .join("scripts")
+            .join("doctor_fastlane_env.sh")
+            .display()
+            .to_string(),
+        project_root
+            .join("scripts")
+            .join("fastlane_run.sh")
+            .display()
+            .to_string(),
     ];
 
     expected

@@ -1,4 +1,5 @@
 export type SigningStyle = "automatic" | "manual";
+export type BootstrapMode = "standard" | "dryRun" | "configFile" | "interactive";
 
 export interface ProjectConfig {
   projectPath: string;
@@ -9,6 +10,8 @@ export interface ProjectConfig {
   bundleIdDev: string;
   bundleIdDis: string;
   teamId: string;
+  profileDev: string;
+  profileDis: string;
   signingStyle: SigningStyle;
   matchGitUrl: string;
   matchGitBranch: string;
@@ -17,8 +20,21 @@ export interface ProjectConfig {
   enableQualityGate: boolean;
   enableTests: boolean;
   enableSwiftlint: boolean;
+  enableSlackNotify: boolean;
+  enableWechatNotify: boolean;
   enableSnapshot: boolean;
+  snapshotScheme: string;
+  snapshotDevices: string;
+  snapshotLanguages: string;
   metadataPath: string;
+  enableMetadataUpload: boolean;
+  enableScreenshotUpload: boolean;
+  gymSkipClean: boolean;
+  derivedDataPath: string;
+  ciBundleInstall: boolean;
+  ciCocoapodsDeployment: boolean;
+  bootstrapMode: BootstrapMode;
+  bootstrapConfigPath: string;
 }
 
 export interface ScanResult {
@@ -36,6 +52,22 @@ export interface LaneRunResult {
   exitCode: number;
   output: string;
   lane: string;
+}
+
+export interface GeneratedFileStatus {
+  path: string;
+  exists: boolean;
+  generated: boolean;
+}
+
+export interface GenerateResult {
+  status: "success" | "failed";
+  mode: string;
+  runtimeEnvPath?: string;
+  runtimeEnvWritten: boolean;
+  files: GeneratedFileStatus[];
+  stdout: string;
+  stderr: string;
 }
 
 export interface IdentityResult {

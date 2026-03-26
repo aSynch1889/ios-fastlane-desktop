@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "build:desktop": "bash ./scripts/build_release.sh",
+    "icons:macos": "bash ./scripts/generate_macos_icons.sh",
+    "release:mas": "bash ./scripts/release_mas.sh --help",
+    "smoke:check": "bash ./scripts/smoke_check.sh",
     "preview": "vite preview",
     "tauri": "tauri"
   },
